@@ -1,6 +1,6 @@
 /*
  *  CCDirector+PopSceneTransitions.h
- *  Created by Jan Willms on 10.06.13.
+ *  Created by Jan Willms [ http://massively.eu ]
  *
  *  The MIT License (MIT)
  *
@@ -33,5 +33,8 @@
 - (NSUInteger) scenesStackCount;
 - (void) popSceneWithTransition:(Class)transitionClass duration:(ccTime)t;
 - (void) replaceSceneStackWithScene:(CCScene *)scene;
+- (void) popToSceneStackLevel:(NSUInteger)level withTransition:(Class)transitionClass duration:(ccTime)t;
+- (void) popToSceneStackLevel:(NSUInteger)level replaceWithScene:(CCScene *)scene;
+- (CCScene *) nextScene;
 
 @end

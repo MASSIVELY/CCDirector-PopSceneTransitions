@@ -1,6 +1,6 @@
 /*
  *  CCDirector+PopSceneTransitions.m
- *  Created by Jan Willms on 10.06.13.
+ *  Created by Jan Willms [ http://massively.eu ]
  *
  *  The MIT License (MIT)
  *
@@ -36,19 +36,29 @@
     return [_scenesStack count];
 }
 
-- (void) popSceneWithTransition:(Class)s duration:(ccTime)t;
+- (void) popSceneWithTransition:(Class)transitionClass duration:(ccTime)t
 {
     NSAssert( _runningScene != nil, @"A running Scene is needed" );
     
+    CCScene *current = [_scenesStack lastObject];
+    if ( [current isRunning] ) {
+        [current onExitTransitionDidStart];
+        [current onExit];
+    }
+    [current cleanup];
     [_scenesStack removeLastObject];
+    
     NSUInteger c = [_scenesStack count];
     if ( c == 0 ) {
         [self end];
-    } else {
-        CCScene* scene = [s transitionWithDuration:t scene:[_scenesStack objectAtIndex:c-1]];
-        [_scenesStack replaceObjectAtIndex:c-1 withObject:scene];
-        _nextScene = scene;
+        return;
     }
+    
+    CCScene* scene = [transitionClass transitionWithDuration:t scene:[_scenesStack objectAtIndex:c-1]];
+    [_scenesStack replaceObjectAtIndex:c-1 withObject:scene];
+    _nextScene = scene;
+
+    _sendCleanupToScene = NO;
 }
 
 - (void) replaceSceneStackWithScene:(CCScene *)scene
@@ -56,10 +66,95 @@
 	NSAssert( _runningScene, @"Use runWithScene: instead to start the director" );
 	NSAssert( scene != nil, @"Argument must be non-nil" );
     
-	_sendCleanupToScene = YES;
+    CCScene *current = [_scenesStack firstObject];
+    if ( [current isRunning] ) {
+        [current onExitTransitionDidStart];
+        [current onExit];
+    }
+    [current cleanup];
+
 	[_scenesStack replaceObjectAtIndex:0 withObject:scene];
 
     [self popToRootScene];
+    
+    _sendCleanupToScene = NO;
+}
+
+- (void) popToSceneStackLevel:(NSUInteger)level withTransition:(Class)transitionClass duration:(ccTime)t
+{
+    NSAssert( _runningScene != nil, @"A running Scene is needed" );
+    
+    NSUInteger c = [_scenesStack count];
+    
+    if ( level == 0 ) {
+        [self end];
+		return;
+    }
+    
+    if ( level >= c) {
+		return;
+    }
+
+	while ( c > level ) {
+		CCScene *current = [_scenesStack lastObject];
+		if ( [current isRunning] ) {
+			[current onExitTransitionDidStart];
+			[current onExit];
+		}
+		[current cleanup];
+        
+		[_scenesStack removeLastObject];
+		c--;
+	}
+    
+    _sendCleanupToScene = NO;
+    
+    CCScene *scene = [transitionClass transitionWithDuration:t scene:[_scenesStack lastObject]];
+    
+	[_runningScene release];
+	_runningScene = [scene retain];
+	_nextScene = nil;
+   
+	[_runningScene onEnter];
+	[_runningScene onEnterTransitionDidFinish];
+}
+
+- (void) popToSceneStackLevel:(NSUInteger)level replaceWithScene:(CCScene *)scene
+{
+    NSAssert( _runningScene != nil, @"A running Scene is needed" );
+    
+    NSUInteger c = [_scenesStack count];
+    
+    if ( level == 0 ) {
+        [self end];
+		return;
+    }
+    
+    if ( level >= c) {
+		return;
+    }
+    
+	while ( c >= level ) {
+		CCScene *current = [_scenesStack lastObject];
+		if ( [current isRunning] ) {
+			[current onExitTransitionDidStart];
+			[current onExit];
+		}
+		[current cleanup];
+        
+		[_scenesStack removeLastObject];
+		c--;
+	}
+    
+    [_scenesStack addObject:scene];
+    _nextScene = scene;
+    
+    _sendCleanupToScene = NO;
+}
+
+- (CCScene *) nextScene
+{
+    return [_scenesStack lastObject];
 }
 
 @end
